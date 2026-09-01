@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  <title>HESAB FLOW</title>
+  <!-- Use local fonts instead of CDN to avoid tracking prevention -->
+  <link href="./fonts/vazirmatn.css" rel="stylesheet" type="text/css" />
+  <style>
+    /* Initial Loading Screen - Shows immediately before React loads */
+    #initial-loader {
+      position: fixed;
+      inset: 0;
+      background: #f9fafb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      font-family: 'Vazirmatn', sans-serif;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      #initial-loader {
+        background: #000000;
+      }
+    }
+
+    #initial-loader .loader-content {
+      text-align: center;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    #initial-loader .logo {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 24px;
+      border-radius: 14px;
+      background: linear-gradient(180deg, #101828, #020617);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.18), 0 12px 32px -8px rgba(16, 185, 129, 0.35);
+      position: relative;
+      overflow: hidden;
+    }
+
+    #initial-loader .logo::before {
+      content: '';
+      position: absolute;
+      top: 14px;
+      left: 12px;
+      right: 12px;
+      height: 12px;
+      background:
+        radial-gradient(circle at 8px 3px, transparent 5px, #34d399 5px, #22d3ee 12px, transparent 12.5px) left top / 20px 12px repeat-x;
+      opacity: 0.9;
+    }
+
+    #initial-loader .logo-text {
+      font-size: 21px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      background: linear-gradient(180deg, #ffffff, #d1fae5);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      margin-top: 10px;
+    }
+
+    #initial-loader h1 {
+      font-size: 24px;
+      font-weight: 900;
+      color: #111827;
+      margin: 0 0 8px 0;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      #initial-loader h1 {
+        color: #ffffff;
+      }
+    }
+
+    #initial-loader p {
+      font-size: 14px;
+      color: #6b7280;
+      margin: 0 0 32px 0;
+    }
+
+    #initial-loader .progress-bar {
+      width: 200px;
+      height: 4px;
+      background: #e5e7eb;
+      margin: 0 auto;
+      overflow: hidden;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      #initial-loader .progress-bar {
+        background: #1f2937;
+      }
+    }
+
+    #initial-loader .progress-fill {
+      height: 100%;
+      background: #0f172a;
+      animation: progress 1.5s ease-in-out infinite;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      #initial-loader .progress-fill {
+        background: #ffffff;
+      }
+    }
+
+    #initial-loader .loading-text {
+      margin-top: 16px;
+      font-size: 12px;
+      color: #9ca3af;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    @keyframes progress {
+      0% {
+        transform: translateX(-100%);
+      }
+      100% {
+        transform: translateX(400%);
+      }
+    }
+
+    /* Hide loader when React is ready */
+    .react-loaded #initial-loader {
+      animation: fadeOut 0.3s ease-out forwards;
+    }
+
+    @keyframes fadeOut {
+      to {
+        opacity: 0;
+        visibility: hidden;
+      }
+    }
+  </style>
+</head>
+
+<body class="bg-gray-50 text-slate-900 dark:bg-dark dark:text-gray-100 transition-colors duration-200">
+  <!-- Initial Loading Screen (Pure HTML/CSS - Shows immediately) -->
+  <div id="initial-loader">
+    <div class="loader-content">
+      <div class="logo">
+        <span class="logo-text">HF</span>
+      </div>
+      <h1>حساب فلو</h1>
+      <p>نرم‌افزار حسابداری هوشمند</p>
+      <div class="progress-bar">
+        <div class="progress-fill"></div>
+      </div>
+      <div class="loading-text">در حال بارگذاری...</div>
+      <div id="boot-error" style="display:none;margin-top:24px;text-align:left;direction:ltr;font-family:monospace;font-size:11px;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;padding:12px;max-width:560px;white-space:pre-wrap;word-break:break-word;max-height:300px;overflow:auto"></div>
+    </div>
+  </div>
+
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+
+  <script>
+    // Surface any uncaught errors instead of leaving a blank window.
+    (function () {
+      var errBox = null;
+      function show(msg) {
+        if (!errBox) errBox = document.getElementById('boot-error');
+        if (!errBox) return;
+        errBox.style.display = 'block';
+        errBox.textContent = (errBox.textContent ? errBox.textContent + '\n\n' : '') + msg;
+      }
+      window.addEventListener('error', function (e) {
+        show('[error] ' + (e.message || '') + '\n' + (e.filename || '') + ':' + (e.lineno || '') + '\n' + ((e.error && e.error.stack) || ''));
+      });
+      window.addEventListener('unhandledrejection', function (e) {
+        var r = e.reason;
+        show('[promise] ' + (r && (r.stack || r.message || String(r))));
+      });
+    })();
+
+    // The #initial-loader is hidden by React (App.tsx) once it has rendered, or
+    // by ErrorBoundary if a render error is caught. As a final safety net, if
+    // React has NOT mounted after 8s, surface a message instead of a blank page.
+    setTimeout(function () {
+      var root = document.getElementById('root');
+      if (root && root.childElementCount === 0) {
+        var box = document.getElementById('boot-error');
+        if (box) {
+          box.style.display = 'block';
+          box.textContent = (box.textContent ? box.textContent + '\n\n' : '') +
+            'برنامه بارگذاری نشد (React mount نشد). لطفاً برنامه را ببندید و دوباره باز کنید.';
+        }
+      }
+    }, 8000);
+  </script>
+</body>
+
+</html>

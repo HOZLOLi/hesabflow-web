@@ -1,0 +1,73 @@
+name: Build & Release Tauri (Windows)
+
+on:
+  push:
+    branches: [main, master]
+    tags:     ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install npm dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build & Release Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
+          releaseName: "HesabFlow ${{ github.ref_name }}"
+          releaseBody: |
+            ## حسابفلو — نسخه ویندوز
+
+            ### 📥 دانلود و نصب
+            دو نوع نصب‌کننده موجود است:
+            - **`HesabFlow_*_x64-setup.exe`** (NSIS) — نصب‌کننده استاندارد و سبک. **توصیه می‌شود.**
+            - **`HesabFlow_*_x64_en-US.msi`** (MSI) — مناسب نصب در محیط‌های اداری/گروهی.
+
+            روی هر کدام دوبار کلیک کنید تا نصب آغاز شود.
+            (اگر Windows SmartScreen هشدار داد → **More info** → **Run anyway**)
+
+            ### ⚙️ اولین اجرا (Setup)
+            در اولین اجرا، پنجره راه‌اندازی نشان داده می‌شود و از شما می‌خواهد مسیر ذخیره دیتابیس را انتخاب کنید.
+
+            ### 💾 بک‌آپ خودکار
+            موقع بستن برنامه، بک‌آپ کامل دیتابیس با تاریخ شمسی در پوشه بک‌آپ ذخیره می‌شود.
+
+            ### 🔄 به‌روزرسانی خودکار
+            در بخش تنظیمات، دکمه «بررسی به‌روزرسانی» وجود دارد. نسخه‌های جدید با امضای دیجیتال تأیید می‌شوند.
+
+            ### 🖥 پیش‌نیاز سیستم
+            - **Windows 10 یا 11** (نسخه ۶۴ بیتی)
+            - WebView2 (روی ویندوز ۱۰ و ۱۱ از پیش نصب است)
+          releaseDraft: false
+          prerelease: false
+          args: --target x86_64-pc-windows-msvc

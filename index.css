@@ -1,0 +1,594 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base Styles */
+body {
+  font-family: var(--font-sans);
+}
+
+/* Custom scrollbar for webkit */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #262626;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Custom Scrollbar Utility */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Hide number input arrows (spinners) */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+/* DatePicker Customization */
+.rmdp-container {
+  width: 100%;
+}
+
+.rmdp-input {
+  width: 100%;
+  height: 38px;
+  border-radius: 0;
+  border: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  padding: 0 1rem;
+  color: #111827;
+}
+
+.dark .rmdp-input {
+  background-color: #171717;
+  border-color: #404040;
+  color: white;
+}
+
+.rmdp-wrapper {
+  border-radius: 0 !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Fade in animation utility */
+.animate-fade-in {
+  animation: var(--animate-fade-in);
+}
+
+/* Print Utilities */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+}
+
+
+/* Base Styles */
+body {
+  font-family: 'Vazirmatn', sans-serif;
+}
+
+/* Custom scrollbar for webkit */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #262626;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Custom Scrollbar Utility */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Hide number input arrows (spinners) */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+/* ============================================================
+   DatePicker Customization (react-multi-date-picker)
+   Matches app theme: light/dark, Vazirmatn, tabular-nums, drawer
+   animation on open. Only `.rmdp-input` styles below — the calendar
+   popup (.rmdp-wrapper and children) is styled in the dedicated
+   block further down with full dark-mode + animation.
+   ============================================================ */
+.rmdp-container {
+  width: 100%;
+}
+
+.rmdp-input {
+  width: 100%;
+  height: 38px;
+  border-radius: 0;
+  border: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+  font-family: 'Vazirmatn', sans-serif;
+  font-size: 0.875rem;
+  padding: 0 1rem;
+  color: #111827;
+}
+
+.dark .rmdp-input {
+  background-color: #171717;
+  border-color: #404040;
+  color: white;
+}
+
+/* === Calendar popup === */
+.rmdp-wrapper {
+  border-radius: 0 !important;
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.18) !important;
+  background-color: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  font-family: 'Vazirmatn', sans-serif !important;
+  /* Drawer-down animation, same as Select */
+  animation: drawer-down 0.18s cubic-bezier(0.32, 0.72, 0, 1);
+  transform-origin: top center;
+}
+
+.dark .rmdp-wrapper {
+  background-color: #050505 !important;
+  border-color: #404040 !important;
+  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Header (month/year navigation) */
+.rmdp-header {
+  background-color: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  margin: 0 !important;
+  padding: 8px !important;
+  font-weight: 700;
+}
+.dark .rmdp-header { background-color: #0a0a0a; border-bottom-color: #262626; }
+.rmdp-header-values { color: #111827; font-weight: 700; }
+.dark .rmdp-header-values { color: #ffffff; }
+.rmdp-header-values span { font-weight: 700 !important; }
+
+/* Arrows */
+.rmdp-arrow-container { border-radius: 4px; }
+.rmdp-arrow-container:hover { background-color: #f3f4f6; }
+.dark .rmdp-arrow-container:hover { background-color: #171717; }
+.rmdp-arrow { border-color: #6b7280; }
+.dark .rmdp-arrow { border-color: #a3a3a3; }
+
+/* Day-of-week header */
+.rmdp-week-day {
+  color: #6b7280 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+}
+.dark .rmdp-week-day { color: #a3a3a3 !important; }
+
+/* Day cells */
+.rmdp-day {
+  color: #374151;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.dark .rmdp-day { color: #d4d4d4; }
+
+.rmdp-day span {
+  border-radius: 4px !important;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.rmdp-day:not(.rmdp-disabled):not(.rmdp-day-hidden) span:hover {
+  background-color: #e0e7ff !important;
+  color: #0f172a !important;
+}
+.dark .rmdp-day:not(.rmdp-disabled):not(.rmdp-day-hidden) span:hover {
+  background-color: #262626 !important;
+  color: #ffffff !important;
+}
+
+/* Today */
+.rmdp-today span {
+  background-color: transparent !important;
+  color: #0ea5e9 !important;
+  font-weight: 700;
+  border: 1px solid #0ea5e9 !important;
+}
+.dark .rmdp-today span { color: #38bdf8 !important; border-color: #38bdf8 !important; }
+
+/* Selected day */
+.rmdp-selected span:not(.highlight) {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  border-color: #0f172a !important;
+}
+.dark .rmdp-selected span:not(.highlight) {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #ffffff !important;
+}
+
+/* Range selection */
+.rmdp-range {
+  background-color: #e0e7ff !important;
+  color: #0f172a !important;
+  box-shadow: none !important;
+}
+.dark .rmdp-range { background-color: #1e293b !important; color: #ffffff !important; }
+.rmdp-range.start span, .rmdp-range.end span {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+}
+.dark .rmdp-range.start span, .dark .rmdp-range.end span {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+/* Disabled days */
+.rmdp-disabled span { color: #d1d5db !important; }
+.dark .rmdp-disabled span { color: #404040 !important; }
+
+/* Outside-of-month days (in month view) */
+.rmdp-day.rmdp-deactive { color: #d1d5db; }
+.dark .rmdp-day.rmdp-deactive { color: #525252; }
+
+/* Top/bottom toolbar */
+.rmdp-top-class, .rmdp-toolbar {
+  background-color: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+}
+.dark .rmdp-top-class, .dark .rmdp-toolbar {
+  background-color: #0a0a0a;
+  border-top-color: #262626;
+}
+.rmdp-toolbar div {
+  color: #374151 !important;
+  font-weight: 700 !important;
+  transition: background-color 0.15s ease;
+}
+.rmdp-toolbar div:hover {
+  background-color: #e0e7ff !important;
+  color: #0f172a !important;
+}
+.dark .rmdp-toolbar div { color: #d4d4d4 !important; }
+.dark .rmdp-toolbar div:hover { background-color: #262626 !important; color: #ffffff !important; }
+
+/* Year picker grid */
+.rmdp-year-picker, .rmdp-month-picker {
+  background-color: #ffffff;
+}
+.dark .rmdp-year-picker, .dark .rmdp-month-picker {
+  background-color: #050505;
+}
+
+/* Readable Persian dates: tabular digits keep month/day columns aligned,
+   slightly tighter tracking + medium weight makes the date legible at
+   small sizes inside dense table rows. */
+.font-date {
+  font-family: 'Vazirmatn', 'Roboto Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+  letter-spacing: 0.01em;
+  font-weight: 500;
+}
+
+/* ============================================================
+   Sidebar Clock — fancy digital clock effects
+   (pure visual layer: same box size, same font sizes)
+   ============================================================ */
+
+/* Flowing gradient border around the clock box */
+@keyframes border-flow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.clock-border {
+  position: relative;
+  border-radius: 0.5rem;
+  padding: 1px;
+  background: linear-gradient(120deg, rgba(255,255,255,0.5), rgba(148,163,184,0.15), rgba(255,255,255,0.1), rgba(255,255,255,0.5));
+  background-size: 300% 300%;
+  animation: border-flow 8s ease-in-out infinite;
+}
+
+/* Soft outer glow that slowly breathes */
+@keyframes clock-aura {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.9; }
+}
+
+.clock-aura {
+  position: absolute;
+  inset: -6px;
+  border-radius: 0.75rem;
+  background: radial-gradient(ellipse at center, rgba(255,255,255,0.16), transparent 65%);
+  filter: blur(10px);
+  animation: clock-aura 5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Digital-style time with neon glow */
+@keyframes clock-glow {
+  0%, 100% {
+    text-shadow: 0 0 12px rgba(255,255,255,0.35), 0 0 32px rgba(255,255,255,0.15), 0 1px 0 rgba(255,255,255,0.3);
+  }
+  50% {
+    text-shadow: 0 0 18px rgba(255,255,255,0.6), 0 0 44px rgba(255,255,255,0.25), 0 1px 0 rgba(255,255,255,0.3);
+  }
+}
+
+.clock-time {
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(180deg, #ffffff 20%, #e2e8f0 75%, #94a3b8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: clock-glow 3s ease-in-out infinite;
+}
+
+/* Faint scanlines overlay (CRT vibe) */
+.clock-scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255,255,255,0.025) 0px,
+    rgba(255,255,255,0.025) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+  pointer-events: none;
+}
+
+/* ============================================================
+   Brand wordmark — travelling shine across "FLOW" + emblem pulse
+   ============================================================ */
+@keyframes flow-shimmer {
+  0% { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+
+/* Dark theme: silver text with a bright white band sweeping through */
+.dark .flow-shimmer {
+  background: linear-gradient(120deg,
+    #e2e8f0 0%, #94a3b8 35%,
+    #ffffff 48%, #f8fafc 50%, #ffffff 52%,
+    #94a3b8 65%, #e2e8f0 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: flow-shimmer 3.5s linear infinite;
+}
+
+/* Light theme: ink text with a light band sweeping through */
+html:not(.dark) .flow-shimmer {
+  background: linear-gradient(120deg,
+    #0f172a 0%, #64748b 35%,
+    #0f172a 48%, #334155 50%, #0f172a 52%,
+    #64748b 65%, #0f172a 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: flow-shimmer 3.5s linear infinite;
+}
+
+/* Emblem: soft breathing halo */
+@keyframes logo-pulse {
+  0%, 100% { filter: drop-shadow(0 0 2px rgba(255,255,255,0.1)); }
+  50% { filter: drop-shadow(0 0 9px rgba(255,255,255,0.5)); }
+}
+
+.dark .logo-glow {
+  animation: logo-pulse 3s ease-in-out infinite;
+}
+
+@keyframes logo-pulse-light {
+  0%, 100% { filter: drop-shadow(0 1px 2px rgba(15,23,42,0.25)); }
+  50% { filter: drop-shadow(0 1px 6px rgba(15,23,42,0.5)); }
+}
+
+html:not(.dark) .logo-glow {
+  animation: logo-pulse-light 3s ease-in-out infinite;
+}
+
+/* Notification drawer — slides in from the left edge */
+@keyframes slide-in-left {
+  0% { transform: translateX(-100%); opacity: 0.6; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Slow sweeping light across the box */
+@keyframes clock-sweep {
+  0% { transform: translateX(-120%) skewX(-15deg); }
+  55%, 100% { transform: translateX(240%) skewX(-15deg); }
+}
+
+.clock-sweep {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+  animation: clock-sweep 9s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* ============================================================
+   Sidebar — mouse spotlight: a soft light follows the cursor
+   across menu items (--mx / --my are set from JS on mousemove)
+   ============================================================ */
+.menu-item-glow {
+  position: relative;
+}
+
+.menu-item-glow::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+  background: radial-gradient(
+    170px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(255, 255, 255, 0.12),
+    rgba(255, 255, 255, 0.04) 45%,
+    transparent 70%
+  );
+}
+
+.menu-item-glow:hover::after {
+  opacity: 1;
+}
+
+/* The icon under the cursor lights up too */
+.menu-item-glow:hover svg {
+  filter: drop-shadow(0 0 7px rgba(255, 255, 255, 0.75));
+  color: #ffffff;
+}
+
+/* Light theme: same effect in ink instead of light */
+html:not(.dark) .menu-item-glow::after {
+  background: radial-gradient(
+    170px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(15, 23, 42, 0.08),
+    rgba(15, 23, 42, 0.03) 45%,
+    transparent 70%
+  );
+}
+
+html:not(.dark) .menu-item-glow:hover svg {
+  filter: drop-shadow(0 0 6px rgba(15, 23, 42, 0.45));
+  color: #0f172a;
+}
+
+/* Print Utilities */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+}

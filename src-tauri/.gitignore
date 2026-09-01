@@ -1,0 +1,6 @@
+# Build output
+target/
+gen/
+
+# Backup files
+**/*.rs.bk

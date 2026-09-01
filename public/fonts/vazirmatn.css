@@ -1,0 +1,32 @@
+/* Vazirmatn Font - Local */
+@font-face {
+  font-family: Vazirmatn;
+  font-style: normal;
+  font-weight: 400;
+  src: url('./Vazirmatn-Regular.woff2') format('woff2');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Vazirmatn;
+  font-style: normal;
+  font-weight: 500;
+  src: url('./Vazirmatn-Medium.woff2') format('woff2');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Vazirmatn;
+  font-style: normal;
+  font-weight: 700;
+  src: url('./Vazirmatn-Bold.woff2') format('woff2');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Vazirmatn;
+  font-style: normal;
+  font-weight: 900;
+  src: url('./Vazirmatn-Black.woff2') format('woff2');
+  font-display: swap;
+}

@@ -4,9 +4,11 @@ import { useDataStore } from '../../store/dataStore';
 import { useUIStore } from '../../store/uiStore';
 import {
   Save, Store, MapPin, Phone, Hash, Download, Upload, RotateCcw, AlertTriangle,
-  HardDrive, FileJson, FileDown, RefreshCw,
+  HardDrive, FileJson, FileDown, RefreshCw, Loader2, CheckCircle2,
 } from 'lucide-react';
 import { DatabaseService } from '../../services/DatabaseService';
+import { sha256Hex } from '../../services/TursoDatabase';
+import { WebSession } from '../../services/WebSession';
 
 interface SettingsFormProps {
   windowId: string;
@@ -30,6 +32,60 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({ windowId }) => {
   const [busy, setBusy] = useState<null | 'backup' | 'restore' | 'reset' | 'update'>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [resetConfirmText, setResetConfirmText] = useState('');
+
+  // Change password (cloud mode only)
+  const [pwCurrent, setPwCurrent] = useState('');
+  const [pwNew, setPwNew] = useState('');
+  const [pwNew2, setPwNew2] = useState('');
+  const [pwBusy, setPwBusy] = useState(false);
+  const [pwError, setPwError] = useState('');
+  const [pwSuccess, setPwSuccess] = useState('');
+  const [pwShow, setPwShow] = useState(false);
+  // Cloud mode is only known AFTER DatabaseService.initialize(), so compute it
+  // at render time — a module-level constant would always read false.
+  const isCloud = !isTauri && DatabaseService.isCloudMode;
+
+  // ── Change password (cloud mode only) ────────────────────────────────
+  const handleChangePassword = async () => {
+    setPwError('');
+    setPwSuccess('');
+    if (!pwCurrent || !pwNew || !pwNew2) {
+      setPwError('همه فیلدها را پر کنید.');
+      return;
+    }
+    if (pwNew.length < 4) {
+      setPwError('رمز جدید باید حداقل ۴ کاراکتر باشد.');
+      return;
+    }
+    if (pwNew !== pwNew2) {
+      setPwError('تکرار رمز جدید با رمز جدید یکسان نیست.');
+      return;
+    }
+    try {
+      const auth = await DatabaseService.getWebAuth();
+      if (!auth) {
+        setPwError('حسابی برای این استقرار تعریف نشده است.');
+        return;
+      }
+      const curHash = await sha256Hex(`${auth.username}:${pwCurrent}`);
+      if (curHash !== auth.passwordHash) {
+        setPwError('رمز عبور فعلی اشتباه است.');
+        return;
+      }
+      setPwBusy(true);
+      const newHash = await sha256Hex(`${auth.username}:${pwNew}`);
+      await DatabaseService.setWebAuth(auth.username, newHash);
+      setPwSuccess('رمز عبور با موفقیت تغییر کرد. از دفعه بعد با رمز جدید وارد شوید.');
+      setPwCurrent('');
+      setPwNew('');
+      setPwNew2('');
+      showToast('success', 'رمز عبور تغییر کرد');
+    } catch (e: any) {
+      setPwError('خطا در تغییر رمز: ' + (e?.message || String(e)));
+    } finally {
+      setPwBusy(false);
+    }
+  };
   const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -53,7 +109,10 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({ windowId }) => {
     closeWindow(windowId);
 
     if (oldScale !== newScale) {
-      reloadTimerRef.current = setTimeout(() => window.location.reload(), 500);
+      reloadTimerRef.current = setTimeout(() => {
+        WebSession.keepNextReload(); // stay logged in across this reload
+        window.location.reload();
+      }, 500);
     }
   };
 
@@ -171,6 +230,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({ windowId }) => {
       showToast('success', 'پشتیبان با موفقیت بازگردانی شد. در حال بارگذاری مجدد...');
       reloadTimerRef.current = setTimeout(async () => {
         try { await DatabaseService.close(); } catch {}
+        WebSession.keepNextReload(); // stay logged in across this reload
         window.location.reload();
       }, 1500);
     } catch (error) {
@@ -210,7 +270,10 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({ windowId }) => {
       const text = await file.text();
       await importBackupJSON(text);
       showToast('success', 'JSON با موفقیت بازگردانی شد. در حال بارگذاری مجدد...');
-      reloadTimerRef.current = setTimeout(() => window.location.reload(), 1500);
+      reloadTimerRef.current = setTimeout(() => {
+        WebSession.keepNextReload(); // stay logged in across this reload
+        window.location.reload();
+      }, 1500);
     } catch (error) {
       console.error('JSON restore error:', error);
       showToast('error', error instanceof Error ? error.message : 'خطا در بازگردانی JSON');
@@ -252,7 +315,10 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({ windowId }) => {
       try { await DatabaseService.close(); } catch {}
 
       showToast('success', 'تمام داده‌ها پاک شد. در حال راه‌اندازی مجدد...');
-      reloadTimerRef.current = setTimeout(() => window.location.reload(), 1200);
+      reloadTimerRef.current = setTimeout(() => {
+        WebSession.keepNextReload(); // factory reset → back to setup, but stay consistent
+        window.location.reload();
+      }, 1200);
     } catch (error) {
       console.error('Factory reset error:', error);
       showToast('error', error instanceof Error ? error.message : 'خطا در پاک‌سازی');
@@ -474,6 +540,87 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({ windowId }) => {
             </div>
           </div>
         </section>
+
+        {/* Owner account & password (cloud mode only) */}
+        {isCloud && (
+          <section className="bg-white dark:bg-surface p-4 border border-gray-200 dark:border-neutral-800 shadow-sm">
+            <h3 className="font-bold text-sm text-gray-800 dark:text-white mb-3 flex items-center gap-2 border-b border-gray-100 dark:border-neutral-800 pb-2">
+              <CheckCircle2 size={16} className="text-emerald-600" />
+              حساب مدیر و رمز عبور (نسخه ابری)
+            </h3>
+            <div className="space-y-3">
+              <p className="text-[11px] text-gray-600 dark:text-gray-400 leading-relaxed">
+                برای ورود به برنامه از هر دستگاه — پس از بستن مرورگر — همیشه رمز عبور درخواست می‌شود.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">رمز عبور فعلی</label>
+                  <input
+                    type={pwShow ? 'text' : 'password'}
+                    value={pwCurrent}
+                    onChange={(e) => { setPwCurrent(e.target.value); setPwError(''); setPwSuccess(''); }}
+                    className="w-full p-2 bg-gray-50 dark:bg-neutral-900 border border-gray-300 dark:border-neutral-700 text-sm focus:border-emerald-500 outline-none"
+                    autoComplete="current-password"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">رمز جدید</label>
+                  <input
+                    type={pwShow ? 'text' : 'password'}
+                    value={pwNew}
+                    onChange={(e) => { setPwNew(e.target.value); setPwError(''); setPwSuccess(''); }}
+                    className="w-full p-2 bg-gray-50 dark:bg-neutral-900 border border-gray-300 dark:border-neutral-700 text-sm focus:border-emerald-500 outline-none"
+                    autoComplete="new-password"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">تکرار رمز جدید</label>
+                  <input
+                    type={pwShow ? 'text' : 'password'}
+                    value={pwNew2}
+                    onChange={(e) => { setPwNew2(e.target.value); setPwError(''); setPwSuccess(''); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleChangePassword(); } }}
+                    className="w-full p-2 bg-gray-50 dark:bg-neutral-900 border border-gray-300 dark:border-neutral-700 text-sm focus:border-emerald-500 outline-none"
+                    autoComplete="new-password"
+                  />
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2 text-[11px] text-gray-600 dark:text-gray-400 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={pwShow}
+                  onChange={(e) => setPwShow(e.target.checked)}
+                  className="accent-emerald-600"
+                />
+                نمایش رمزها
+              </label>
+
+              {pwError && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 p-2.5 text-[11px] flex items-center gap-1.5">
+                  <AlertTriangle size={13} className="flex-shrink-0" />
+                  {pwError}
+                </div>
+              )}
+              {pwSuccess && (
+                <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-900/40 text-emerald-600 dark:text-emerald-400 p-2.5 text-[11px] flex items-center gap-1.5">
+                  <CheckCircle2 size={13} className="flex-shrink-0" />
+                  {pwSuccess}
+                </div>
+              )}
+
+              <button
+                type="button"
+                disabled={pwBusy || busy !== null}
+                onClick={handleChangePassword}
+                className="w-full px-3 py-2.5 bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs font-bold flex items-center justify-center gap-1.5"
+              >
+                {pwBusy ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                {pwBusy ? 'در حال تغییر رمز...' : 'تغییر رمز عبور'}
+              </button>
+            </div>
+          </section>
+        )}
 
         {/* App Updates (Tauri only) */}
         {isTauri && (

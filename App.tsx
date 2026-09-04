@@ -26,6 +26,7 @@ import { WelcomeSetup } from './components/setup/WelcomeSetup';
 import { WebSetup } from './components/setup/WebSetup';
 import { WebLogin } from './components/setup/WebLogin';
 import { hasTursoCredentials } from './services/TursoDatabase';
+import { WebSession } from './services/WebSession';
 import { AutoBackupSetup } from './components/setup/AutoBackupSetup';
 import { useWindowStore } from './store/windowStore';
 import { useNotificationSystem } from './hooks/useNotificationSystem';
@@ -132,7 +133,7 @@ const App: React.FC = () => {
       // login screen before any data is loaded.
       if (!DatabaseService.isTauri && DatabaseService.isCloudMode) {
         const auth = await DatabaseService.getWebAuth().catch(() => null);
-        if (auth && sessionStorage.getItem('hesabflow_web_auth_ok') !== '1') {
+        if (auth && !WebSession.isCloudSession()) {
           setNeedsWebLogin(true);
           return;
         }
@@ -283,6 +284,15 @@ const App: React.FC = () => {
       document.documentElement.classList.remove('dark');
     }
   }, [isDark]);
+
+  // Web deployment: end the authenticated session whenever the tab/page is
+  // closed, so reopening the app always asks for the password again.
+  // (No-ops on the Tauri desktop path. Programmatic reloads — restore/reset —
+  // arm WebSession.keepNextReload() first and keep the session.)
+  useEffect(() => {
+    if (DatabaseService.isTauri) return;
+    return WebSession.bindLogoutOnClose();
+  }, []);
 
   const toggleTheme = () => {
     setIsDark(!isDark);

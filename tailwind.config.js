@@ -36,6 +36,12 @@ export default {
                 'fade-in-delay': 'fade-in-delay 0.5s ease-out 0.3s both',
                 'drawer-down': 'drawer-down 0.18s cubic-bezier(0.32, 0.72, 0, 1)',
                 'drawer-up': 'drawer-up 0.18s cubic-bezier(0.32, 0.72, 0, 1)',
+                'card-sink': 'card-sink 0.45s cubic-bezier(0.55, 0, 0.55, 0.2) both',
+                'brand-drop': 'brand-drop 0.75s cubic-bezier(0.34, 1.4, 0.64, 1) both',
+                'rule-expand': 'rule-expand 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both',
+                'welcome-rise': 'welcome-rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.85s both',
+                'ambient-glow': 'ambient-glow 3.5s ease-in-out infinite',
+                'intro-out': 'intro-out 0.45s cubic-bezier(0.55, 0, 0.55, 0.2) both',
             },
             keyframes: {
                 'gradient-xy': {
@@ -127,7 +133,32 @@ export default {
                 'drawer-up': {
                     '0%': { opacity: '0', transform: 'scaleY(0.85) translateY(4px)' },
                     '100%': { opacity: '1', transform: 'scaleY(1) translateY(0)' },
-                }
+                },
+                'card-sink': {
+                    '0%': { opacity: '1', transform: 'scale(1) translateY(0)' },
+                    '100%': { opacity: '0', transform: 'scale(0.9) translateY(90px)' },
+                },
+                'brand-drop': {
+                    '0%': { opacity: '0', transform: 'translateY(-140px) scale(0.45)' },
+                    '60%': { opacity: '1', transform: 'translateY(10px) scale(1.08)' },
+                    '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+                },
+                'rule-expand': {
+                    '0%': { opacity: '0', transform: 'scaleX(0)' },
+                    '100%': { opacity: '1', transform: 'scaleX(1)' },
+                },
+                'welcome-rise': {
+                    '0%': { opacity: '0', transform: 'translateY(18px)' },
+                    '100%': { opacity: '1', transform: 'translateY(0)' },
+                },
+                'ambient-glow': {
+                    '0%, 100%': { opacity: '0.5', transform: 'scale(1)' },
+                    '50%': { opacity: '0.9', transform: 'scale(1.12)' },
+                },
+                'intro-out': {
+                    '0%': { opacity: '1', transform: 'scale(1)' },
+                    '100%': { opacity: '0', transform: 'scale(1.04)' },
+                },
             }
         },
     },

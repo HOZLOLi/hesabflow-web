@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Cloud, Database, KeyRound, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { DatabaseService } from '../../services/DatabaseService';
 import { testTursoConnection, saveTursoCredentials, sha256Hex, type TursoCredentials } from '../../services/TursoDatabase';
 import { WebSession } from '../../services/WebSession';
+import { WelcomeIntro } from './WelcomeIntro';
 
 interface WebSetupProps {
   onComplete: () => void;
@@ -32,6 +33,19 @@ export const WebSetup: React.FC<WebSetupProps> = ({ onComplete }) => {
   const [password2, setPassword2] = useState('');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
+
+  // Finish sequence: card sinks away → cinematic welcome intro → app
+  const [leaving, setLeaving] = useState(false);
+  const [intro, setIntro] = useState<null | { username?: string; demo?: boolean }>(null);
+  const finishTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (finishTimerRef.current !== null) clearTimeout(finishTimerRef.current);
+  }, []);
+
+  const beginFinish = (info: { username?: string; demo?: boolean }) => {
+    setLeaving(true); // card sinks away (animate-card-sink)
+    finishTimerRef.current = setTimeout(() => setIntro(info), 460);
+  };
 
   // Step 1: connect to Turso
   const handleTestAndContinue = async () => {
@@ -84,7 +98,7 @@ export const WebSetup: React.FC<WebSetupProps> = ({ onComplete }) => {
       // This browser session is now authenticated (skips the login gate)
       WebSession.markAuthenticated();
       localStorage.setItem('hesabflow_web_setup_complete', 'true');
-      onComplete();
+      beginFinish({ username: username.trim() });
     } catch (e: any) {
       setError(e?.message || String(e));
       setCreating(false);
@@ -94,11 +108,22 @@ export const WebSetup: React.FC<WebSetupProps> = ({ onComplete }) => {
   // Demo mode: skip cloud entirely
   const handleDemoMode = () => {
     localStorage.setItem('hesabflow_web_setup_complete', 'true');
-    onComplete();
+    beginFinish({ demo: true });
   };
 
   const inputCls = 'w-full bg-gray-50 dark:bg-black border border-gray-300 dark:border-neutral-800 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15 transition-all text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-neutral-600';
   const labelCls = 'block text-sm font-bold mb-1.5 text-gray-700 dark:text-gray-300';
+
+  // Cinematic welcome — plays after the card sinks away, then onComplete()
+  if (intro) {
+    return (
+      <WelcomeIntro
+        username={intro.demo ? undefined : intro.username}
+        subtitle={intro.demo ? 'حالت آزمایشی فعال شد — داده‌ها روی همین مرورگر ذخیره می‌شوند' : 'محیط کاری شما آماده است'}
+        onDone={onComplete}
+      />
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-50 dark:bg-black p-4 overflow-y-auto" dir="rtl">
@@ -109,7 +134,7 @@ export const WebSetup: React.FC<WebSetupProps> = ({ onComplete }) => {
           backgroundSize: '50px 50px'
         }}></div>
       </div>
-      <div className="relative z-10 w-full max-w-lg my-auto">
+      <div className={'relative z-10 w-full max-w-lg my-auto ' + (leaving ? 'animate-card-sink' : '')}>
         <div className="flex flex-col items-center mb-6 select-none">
           <h1 className="text-4xl font-black tracking-tighter uppercase text-gray-900 dark:text-white">
             HESAB <span className="flow-shimmer">FLOW</span>

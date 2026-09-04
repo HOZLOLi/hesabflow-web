@@ -82,7 +82,10 @@ first-run wizard. Stored per-browser: `hesabflow_turso_creds` (JSON
 - Flow: `WebSetup` step 2 creates/verifies the owner (existing DB keeps old
   credentials) and sets the session flag; `initializeApp()` then re-checks
   `web_auth` on every boot and renders `components/setup/WebLogin.tsx` BEFORE
-  loading data if not authenticated this session.
+  loading data if not authenticated this session. Both gates end with the
+  `components/setup/WelcomeIntro.tsx` cinematic (card sinks → brand drops in →
+  «خوش آمدید» → app); animations live in `tailwind.config.js`
+  (`card-sink`, `brand-drop`, `welcome-rise`, `intro-out`, …).
 - **Logout on tab close (product rule):** the session must die when the tab
   closes. `services/WebSession.ts` binds `pagehide`/`beforeunload` to clear the
   session flag (handles browsers that restore sessionStorage on "reopen closed

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { KeyRound, Loader2, AlertCircle, LogIn } from 'lucide-react';
 import { DatabaseService } from '../../services/DatabaseService';
 import { WebSession } from '../../services/WebSession';
+import { WelcomeIntro } from './WelcomeIntro';
 
 interface WebLoginProps {
   onSuccess: () => void;
@@ -18,6 +19,14 @@ export const WebLogin: React.FC<WebLoginProps> = ({ onSuccess }) => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
+  // Finish sequence: card sinks away → cinematic welcome intro → app
+  const [leaving, setLeaving] = useState(false);
+  const [intro, setIntro] = useState<null | string>(null);
+  const finishTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (finishTimerRef.current !== null) clearTimeout(finishTimerRef.current);
+  }, []);
+
   const handleLogin = async () => {
     if (!username.trim() || !password) {
       setError('نام کاربری و رمز عبور را وارد کنید.');
@@ -29,7 +38,8 @@ export const WebLogin: React.FC<WebLoginProps> = ({ onSuccess }) => {
       const ok = await DatabaseService.verifyWebLogin(username.trim(), password);
       if (ok) {
         WebSession.markAuthenticated();
-        onSuccess();
+        setLeaving(true); // card sinks away
+        finishTimerRef.current = setTimeout(() => setIntro(username.trim()), 460);
       } else {
         setError('نام کاربری یا رمز عبور اشتباه است.');
       }
@@ -42,6 +52,11 @@ export const WebLogin: React.FC<WebLoginProps> = ({ onSuccess }) => {
 
   const inputCls = 'w-full bg-gray-50 dark:bg-black border border-gray-300 dark:border-neutral-800 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15 transition-all text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-neutral-600';
 
+  // Cinematic welcome — plays after the card sinks away, then onSuccess()
+  if (intro !== null) {
+    return <WelcomeIntro username={intro} subtitle="در حال بارگذاری محیط کاری..." onDone={onSuccess} />;
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-50 dark:bg-black p-4" dir="rtl">
       {/* Grid pattern - same as SplashScreen */}
@@ -51,8 +66,10 @@ export const WebLogin: React.FC<WebLoginProps> = ({ onSuccess }) => {
           backgroundSize: '50px 50px'
         }}></div>
       </div>
-      <div className="relative z-10 w-full max-w-sm">
-        <div className="flex flex-col items-center mb-6 select-none">
+      {/* Soft emerald ambience */}
+      <div className="absolute w-[560px] h-[560px] rounded-full bg-emerald-500/10 blur-[130px] animate-ambient-glow pointer-events-none" />
+      <div className={'relative z-10 w-full max-w-sm ' + (leaving ? 'animate-card-sink' : 'animate-slide-up-fade')}>
+        <div className="flex flex-col items-center mb-6 select-none animate-slide-up-fade">
           <h1 className="text-4xl font-black tracking-tighter uppercase text-gray-900 dark:text-white">
             HESAB <span className="flow-shimmer">FLOW</span>
           </h1>

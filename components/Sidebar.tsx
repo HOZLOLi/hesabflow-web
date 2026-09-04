@@ -4,7 +4,6 @@ import { LayoutDashboard, Receipt, BrainCircuit, Settings, LogOut, Moon, Sun, Us
 import { useWindowStore } from '../store/windowStore';
 import { useUIStore } from '../store/uiStore';
 import { PageType } from '../types';
-import { BrandLogo } from './BrandLogo';
 
 interface SidebarProps {
   isDark: boolean;
@@ -121,18 +120,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ isDark, toggleTheme }) => {
     <div className="w-64 h-full bg-white dark:bg-surface border-l border-gray-200 dark:border-neutral-800 flex flex-col justify-between transition-colors duration-200 shadow-xl z-20">
       {/* Top Section */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
-        <div className="h-14 flex items-center px-4 border-b border-gray-100 dark:border-neutral-800 justify-between bg-white dark:bg-surface sticky top-0 z-10">
+        <div className="h-16 flex items-center px-4 border-b border-gray-100 dark:border-neutral-800 justify-between bg-white dark:bg-surface sticky top-0 z-10">
           <div className="flex items-center gap-2.5">
-            <BrandLogo size={30} className="logo-glow rounded-md" />
-            <h1 className="text-xl font-black tracking-tighter text-primary dark:text-white">
+            <h1 className="text-2xl font-black tracking-tighter text-primary dark:text-white select-none">
               HESAB <span className="flow-shimmer">FLOW</span>
             </h1>
           </div>
           <button
             onClick={toggleNotificationPanel}
-            className="relative p-1.5 text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-white transition-colors"
+            className="relative p-2 text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-white transition-colors"
           >
-            <Bell size={20} />
+            <Bell size={22} />
             {unreadCount > 0 && (
               <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 border-2 border-white dark:border-surface rounded-full"></span>
             )}

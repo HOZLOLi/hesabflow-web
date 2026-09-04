@@ -2,7 +2,6 @@
   "name": "hesab-flow",
   "private": true,
   "version": "2.0.12",
-
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -14,6 +13,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.41.0",
+    "@libsql/client": "^0.18.0",
     "@tauri-apps/api": "^2.11.0",
     "@tauri-apps/plugin-dialog": "^2.7.1",
     "@tauri-apps/plugin-fs": "^2.5.1",

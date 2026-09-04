@@ -23,6 +23,9 @@ import { CalendarTodo } from './components/CalendarTodo';
 import { RepairReceipts } from './components/RepairReceipts';
 import { LoadingScreen } from './components/LoadingScreen';
 import { WelcomeSetup } from './components/setup/WelcomeSetup';
+import { WebSetup } from './components/setup/WebSetup';
+import { WebLogin } from './components/setup/WebLogin';
+import { hasTursoCredentials } from './services/TursoDatabase';
 import { AutoBackupSetup } from './components/setup/AutoBackupSetup';
 import { useWindowStore } from './store/windowStore';
 import { useNotificationSystem } from './hooks/useNotificationSystem';
@@ -42,6 +45,8 @@ const App: React.FC = () => {
   const updateSettings = useDataStore(state => state.updateSettings);
   const [isDark, setIsDark] = useState(false);
   const [needsSetup, setNeedsSetup] = useState(false);
+  const [needsWebSetup, setNeedsWebSetup] = useState(false);
+  const [needsWebLogin, setNeedsWebLogin] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [initError, setInitError] = useState<{ message: string; details?: string } | null>(null);
   const [loadingStep, setLoadingStep] = useState('database');
@@ -122,6 +127,17 @@ const App: React.FC = () => {
       console.log(`✅ Step 3: Database initialized (${(dbEndTime - dbStartTime).toFixed(0)}ms)`);
       setLoadingProgress(5);
 
+      // Web deployment single-user gate: if a cloud owner account exists and
+      // this browser session hasn't authenticated yet, stop here and show the
+      // login screen before any data is loaded.
+      if (!DatabaseService.isTauri && DatabaseService.isCloudMode) {
+        const auth = await DatabaseService.getWebAuth().catch(() => null);
+        if (auth && sessionStorage.getItem('hesabflow_web_auth_ok') !== '1') {
+          setNeedsWebLogin(true);
+          return;
+        }
+      }
+
       // Check if migration is needed
       console.log('🔄 Step 4: Checking migration...');
       const migrationCheckStart = performance.now();
@@ -196,12 +212,22 @@ const App: React.FC = () => {
         // On the desktop (Tauri) we ask the user WHERE to store the database on
         // first launch — the WelcomeSetup wizard lets them pick a custom folder
         // (e.g. drive D/E so data survives a Windows reinstall) or use the
-        // default AppData path. In browser/web mode there is no folder concept,
-        // so we skip straight to initialization.
+        // default AppData path.
         const firstRun = localStorage.getItem('hesabflow_setup_complete') !== 'true';
         if (DatabaseService.isTauri && firstRun) {
           setNeedsSetup(true);
           return; // initializeApp() runs from handleSetupComplete()
+        }
+
+        // In the browser (web/Netlify deployment): on first run show the cloud
+        // setup wizard (Turso credentials + owner account, or demo mode). On
+        // later runs, if a cloud owner account exists, require login first.
+        if (!DatabaseService.isTauri) {
+          const webSetupDone = localStorage.getItem('hesabflow_web_setup_complete') === 'true';
+          if (!webSetupDone && !hasTursoCredentials()) {
+            setNeedsWebSetup(true);
+            return; // initializeApp() runs from handleWebSetupComplete()
+          }
         }
 
         await initializeApp();
@@ -235,6 +261,21 @@ const App: React.FC = () => {
     initializeApp();
   };
 
+  const handleWebSetupComplete = () => {
+    setNeedsWebSetup(false);
+    // The wizard either created the owner account or verified the existing
+    // one (marking this session authenticated), or demo mode was chosen.
+    // initializeApp() handles the cloud login gate from here.
+    initializeApp();
+  };
+
+  const handleWebLoginSuccess = () => {
+    sessionStorage.setItem('hesabflow_web_auth_ok', '1');
+    setNeedsWebLogin(false);
+    // Continue initialization (DB is already connected; this loads the data)
+    initializeApp();
+  };
+
   useEffect(() => {
     if (isDark) {
       document.documentElement.classList.add('dark');
@@ -246,6 +287,16 @@ const App: React.FC = () => {
   const toggleTheme = () => {
     setIsDark(!isDark);
   };
+
+  // Show web first-run setup (browser/Netlify deployment only)
+  if (needsWebSetup) {
+    return <WebSetup onComplete={handleWebSetupComplete} />;
+  }
+
+  // Show single-user login gate (web deployment with an existing owner account)
+  if (needsWebLogin) {
+    return <WebLogin onSuccess={handleWebLoginSuccess} />;
+  }
 
   // Show First-Run Setup
   if (needsSetup) {

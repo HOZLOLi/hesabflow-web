@@ -8,6 +8,8 @@ import {
 
 export class DatabaseService {
   private static db: Database | null = null;
+  /** Which backend is currently active — set during _doInitialize(). */
+  private static mode: 'tauri' | 'turso' | 'web' = 'web';
   private static isInitializing: boolean = false;
   private static initPromise: Promise<void> | null = null;
 
@@ -41,11 +43,35 @@ export class DatabaseService {
       // ── Web / non-Tauri mode ──────────────────────────────────────────────
       const isTauri = DatabaseService.isTauri;
       if (!isTauri) {
+        // Cloud mode: if the user saved Turso credentials in the first-run
+        // wizard, connect to their own Turso (libSQL) database over HTTPS.
+        // On failure we fall through to local IndexedDB so the app still
+        // boots in demo mode instead of dead-ending on an error screen.
+        const { loadTursoCredentials, TursoDatabase } = await import('./TursoDatabase');
+        const tursoCreds = loadTursoCredentials();
+        if (tursoCreds) {
+          try {
+            console.log('☁️ Turso credentials found — connecting to cloud database...');
+            const turso = new TursoDatabase(tursoCreds);
+            await turso.connect();
+            this.db = turso as any;
+            this.mode = 'turso';
+            await this.initDatabase();
+            await this.runMigrations();
+            console.log('✅ Turso cloud database ready');
+            return;
+          } catch (e) {
+            console.error('❌ Turso connection failed, falling back to IndexedDB demo mode:', e);
+            this.db = null;
+          }
+        }
+
         console.log('🌐 Tauri not detected — using in-memory IndexedDB storage (web mode)');
         const { WebDatabase } = await import('./WebDatabase');
         const webDb = new WebDatabase();
         await webDb.loadFromStorage();
         this.db = webDb as any;
+        this.mode = 'web';
         await this.initDatabase();
         await this.runMigrations();
         console.log('✅ WebDatabase ready');
@@ -78,6 +104,7 @@ export class DatabaseService {
 
       // We must prefix the absolute path with 'sqlite:' for tauri-plugin-sql
       this.db = await Database.load(`sqlite:${dbPath}`);
+      this.mode = 'tauri';
       console.log('✅ Database loaded');
 
       // Configure database for optimal performance and safety
@@ -265,6 +292,9 @@ export class DatabaseService {
         phone TEXT NOT NULL,
         address TEXT,
         balance REAL NOT NULL DEFAULT 0,
+        notes TEXT,
+        creditLimit REAL,
+        isGuest INTEGER NOT NULL DEFAULT 0,
         createdAt TEXT NOT NULL
       )`,
 
@@ -293,6 +323,7 @@ export class DatabaseService {
         accountNumber TEXT NOT NULL,
         shaba TEXT,
         balance REAL NOT NULL DEFAULT 0,
+        openingBalance REAL NOT NULL DEFAULT 0,
         color TEXT NOT NULL,
         cardHolder TEXT
       )`,
@@ -309,6 +340,8 @@ export class DatabaseService {
         customerId TEXT,
         accountId TEXT,
         toAccountId TEXT,
+        refId TEXT,
+        refType TEXT,
         FOREIGN KEY (customerId) REFERENCES customers(id) ON DELETE RESTRICT,
         FOREIGN KEY (accountId) REFERENCES bank_accounts(id) ON DELETE RESTRICT,
         FOREIGN KEY (toAccountId) REFERENCES bank_accounts(id) ON DELETE RESTRICT,
@@ -330,6 +363,7 @@ export class DatabaseService {
         dueDate TEXT NOT NULL,
         description TEXT,
         images TEXT,
+        refInvoiceId TEXT,
         createdAt TEXT NOT NULL,
         FOREIGN KEY (customerId) REFERENCES customers(id) ON DELETE RESTRICT,
         FOREIGN KEY (accountId) REFERENCES bank_accounts(id) ON DELETE RESTRICT,
@@ -360,6 +394,7 @@ export class DatabaseService {
         checkId TEXT,
         repairReceiptId TEXT,
         description TEXT,
+        linkedCheckIds TEXT,
         createdAt TEXT NOT NULL,
         status TEXT,
         FOREIGN KEY (customerId) REFERENCES customers(id) ON DELETE RESTRICT,
@@ -521,6 +556,16 @@ export class DatabaseService {
         referenceId TEXT,
         description TEXT NOT NULL,
         FOREIGN KEY (productId) REFERENCES products(id) ON DELETE CASCADE
+      )`,
+
+      // Web Auth Table — single-user login for the web/Netlify deployment.
+      // Desktop (Tauri) never uses it. Lives in the cloud DB so every browser
+      // of the same deployment shares one credential.
+      `CREATE TABLE IF NOT EXISTS web_auth (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        username TEXT NOT NULL,
+        passwordHash TEXT NOT NULL,
+        createdAt TEXT NOT NULL
       )`
     ];
 
@@ -2124,5 +2169,41 @@ export class DatabaseService {
       }
     }
     console.log('✅ JSON backup restored');
+  }
+
+  // ==================== CLOUD / WEB AUTH (web mode only) ====================
+
+  /** True when the app is running in the browser against the user's own
+   *  Turso cloud database (set up via the first-run WebSetup wizard). */
+  static get isCloudMode(): boolean {
+    return this.mode === 'turso';
+  }
+
+  /** The stored single-user credential for the web deployment, if set up. */
+  static async getWebAuth(): Promise<{ username: string; passwordHash: string } | null> {
+    await this.ensureInitialized();
+    const rows = await this.db!.select<{ username: string; passwordHash: string }[]>(
+      'SELECT username, passwordHash FROM web_auth WHERE id = 1'
+    );
+    return rows[0] ?? null;
+  }
+
+  /** Create or replace the single-user credential (hashes before storing). */
+  static async setWebAuth(username: string, passwordHash: string): Promise<void> {
+    await this.ensureInitialized();
+    await this.db!.execute(
+      `INSERT OR REPLACE INTO web_auth (id, username, passwordHash, createdAt) VALUES (1, $1, $2, $3)`,
+      [username, passwordHash, new Date().toISOString()]
+    );
+  }
+
+  /** Verify a login attempt against the stored credential (SHA-256, salted
+   *  with the username). Returns false when no credential exists yet. */
+  static async verifyWebLogin(username: string, password: string): Promise<boolean> {
+    const auth = await this.getWebAuth();
+    if (!auth) return false;
+    const { sha256Hex } = await import('./TursoDatabase');
+    const hash = await sha256Hex(`${username}:${password}`);
+    return username === auth.username && hash === auth.passwordHash;
   }
 }

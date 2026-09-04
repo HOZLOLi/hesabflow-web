@@ -1,0 +1,13 @@
+# Netlify deployment for the web version of HesabFlow.
+# The database is NOT on Netlify: each user connects the app to their own
+# Turso (libSQL) cloud database on first launch. See README "Deploy" section.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# SPA fallback: serve index.html for any route the app requests.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

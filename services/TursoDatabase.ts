@@ -145,6 +145,47 @@ export class TursoDatabase {
     await this.client.execute({ sql: translated, args: params as any[] });
   }
 
+  /**
+   * Insert many rows in one round-trip per chunk (RESTORE fast path).
+   * Uses client.migrate() so FK constraints are disabled inside the batch —
+   * child rows (invoices → customers) can be inserted in any order.
+   * If a whole chunk fails (one bad row aborts the batch), fall back to
+   * per-row execute so only the actually-bad row is skipped.
+   * `onProgress` reports (rowsDone, totalRows) after each chunk.
+   */
+  async executeBatch(
+    statements: Array<{ sql: string; params: unknown[] }>,
+    onProgress?: (done: number, total: number) => void
+  ): Promise<void> {
+    if (!this.client) throw new Error('Turso client not connected');
+    if (statements.length === 0) return;
+
+    const CHUNK_SIZE = 50;
+    let done = 0;
+    for (let i = 0; i < statements.length; i += CHUNK_SIZE) {
+      const chunk = statements.slice(i, i + CHUNK_SIZE);
+      const stmts = chunk.map(s => ({
+        sql: this.translatePlaceholders(s.sql.trim()),
+        args: s.params as any[],
+      }));
+      try {
+        await this.client.migrate(stmts);
+      } catch {
+        // One bad row aborts the whole chunk — retry row by row so only the
+        // genuinely bad row is lost, like the old per-row path.
+        for (const s of chunk) {
+          try {
+            await this.execute(s.sql, s.params);
+          } catch (e) {
+            console.warn('⚠️ Skipped row during batch restore:', e);
+          }
+        }
+      }
+      done += chunk.length;
+      onProgress?.(done, statements.length);
+    }
+  }
+
   async select<T = Record<string, unknown>>(sql: string, params: unknown[] = []): Promise<T[]> {
     if (!this.client) throw new Error('Turso client not connected');
     const s = sql.trim();

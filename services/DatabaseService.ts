@@ -2135,7 +2135,10 @@ export class DatabaseService {
     return JSON.stringify(dump, null, 2);
   }
 
-  static async importFromJSON(jsonText: string): Promise<void> {
+  static async importFromJSON(
+    jsonText: string,
+    onProgress?: (table: string, done: number, total: number) => void
+  ): Promise<void> {
     let parsed: any;
     try {
       parsed = JSON.parse(jsonText);
@@ -2151,23 +2154,87 @@ export class DatabaseService {
     // Clear existing data (respecting FK order)
     await this.clearAllData();
 
-    // Reverse the clear order so parents are inserted before children
+    // JSON columns that the app's row mappers expect as serialized strings
+    // (see addInvoice/addProduction/addTask/...). A backup produced by
+    // WebDatabase mode (or a hand-edited file) can hold raw arrays/objects
+    // here — re-serialize them, otherwise JSON.parse on load crashes and
+    // every invoice/production/repair becomes unreadable after restore.
+    const JSON_COLUMNS: Record<string, string[]> = {
+      invoices: ['items', 'linkedCheckIds'],
+      productions: ['rawMaterials', 'costs', 'notes', 'photos'],
+      repair_receipts: ['usedParts', 'imagesReceive', 'imagesRepaired', 'imagesDelivery'],
+      tasks: ['tags'],
+      products: ['pricingStrategy', 'images'],
+      checks: ['images'],
+      system_logs: ['details'],
+    };
+
+    let totalRows = 0;
+    for (const table of this.BACKUP_TABLES) {
+      const rows = parsed[table];
+      totalRows += Array.isArray(rows) ? rows.length : 0;
+    }
+
+    let doneRows = 0;
+    // Parents before children (reverse of the delete order)
     const insertOrder = [...this.BACKUP_TABLES];
     for (const table of insertOrder) {
       const rows: any[] = Array.isArray(parsed[table]) ? parsed[table] : [];
       if (rows.length === 0) continue;
+
+      const jsonCols = JSON_COLUMNS[table] ?? [];
+      const batch: Array<{ sql: string; params: unknown[] }> = [];
       for (const row of rows) {
+        if (!row || typeof row !== 'object') continue;
         const cols = Object.keys(row);
+        if (cols.length === 0) continue;
+        const values = cols.map(c => {
+          const v = row[c];
+          if (jsonCols.includes(c)) {
+            return v === undefined || v === null ? null : JSON.stringify(v);
+          }
+          if (v === undefined) return null;
+          if (typeof v === 'boolean') return v ? 1 : 0;
+          return v;
+        });
         const placeholders = cols.map((_, i) => `$${i + 1}`).join(', ');
-        const values = cols.map(c => row[c]);
-        const sql = `INSERT INTO ${table} (${cols.join(', ')}) VALUES (${placeholders})`;
-        try {
-          await this.db!.execute(sql, values);
-        } catch (e) {
-          console.warn(`⚠️ Skipped row in ${table}:`, e);
+        batch.push({
+          sql: `INSERT INTO ${table} (${cols.join(', ')}) VALUES (${placeholders})`,
+          params: values,
+        });
+      }
+
+      if (batch.length > 0) {
+        if (typeof (this.db as any)?.executeBatch === 'function') {
+          // Turso: one HTTPS round-trip per chunk instead of one per row —
+          // this is what makes cloud restore take seconds instead of hanging
+          // for many minutes.
+          await (this.db as any).executeBatch(batch, (done: number) => {
+            onProgress?.(table, doneRows + done, totalRows);
+          });
+        } else {
+          // Tauri SQLite / WebDatabase: local per-row inserts (fast enough).
+          for (const stmt of batch) {
+            try {
+              await this.db!.execute(stmt.sql, stmt.params);
+            } catch (e) {
+              console.warn(`⚠️ Skipped row in ${table}:`, e);
+            }
+          }
         }
       }
+      doneRows += rows.length;
+      onProgress?.(table, doneRows, totalRows);
     }
+
+    // WebDatabase (IndexedDB) mode: the debounced save must hit storage
+    // BEFORE the caller reloads the page, otherwise the freshly imported
+    // data dies with the pending timer and the restore appears to "do
+    // nothing".
+    if (typeof (this.db as any)?.flush === 'function') {
+      await (this.db as any).flush();
+    }
+
     console.log('✅ JSON backup restored');
   }
 

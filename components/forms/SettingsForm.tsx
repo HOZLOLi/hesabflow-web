@@ -30,6 +30,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({ windowId }) => {
   const [formData, setFormData] = useState(settings);
   const [dbPath, setDbPath] = useState<string>('');
   const [busy, setBusy] = useState<null | 'backup' | 'restore' | 'reset' | 'update'>(null);
+  const [restoreProgress, setRestoreProgress] = useState<string | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [resetConfirmText, setResetConfirmText] = useState('');
 
@@ -266,9 +267,14 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({ windowId }) => {
   const doRestoreJSON = async (file: File) => {
     try {
       setBusy('restore');
+      setRestoreProgress(null);
       showToast('warning', 'در حال بازگردانی JSON...');
       const text = await file.text();
-      await importBackupJSON(text);
+      await importBackupJSON(text, (table, done, total) => {
+        const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+        setRestoreProgress(`${pct}%`);
+      });
+      setRestoreProgress('100%');
       showToast('success', 'JSON با موفقیت بازگردانی شد. در حال بارگذاری مجدد...');
       reloadTimerRef.current = setTimeout(() => {
         WebSession.keepNextReload(); // stay logged in across this reload
@@ -278,6 +284,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({ windowId }) => {
       console.error('JSON restore error:', error);
       showToast('error', error instanceof Error ? error.message : 'خطا در بازگردانی JSON');
       setBusy(null);
+      setRestoreProgress(null);
     }
   };
 
@@ -526,6 +533,21 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({ windowId }) => {
                 className="hidden"
                 onChange={onJSONFileSelected}
               />
+              {restoreProgress && (
+                <div className="col-span-2 bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 p-2">
+                  <div className="flex items-center gap-2 text-[10px] text-gray-600 dark:text-gray-400 mb-1">
+                    <Loader2 size={12} className="animate-spin" />
+                    <span>در حال بازگردانی اطلاعات... {restoreProgress}</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-gray-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-sky-600 transition-all duration-200"
+                      style={{ width: restoreProgress }}
+                    />
+                  </div>
+                  <div className="sr-only" aria-live="polite">در حال بازگردانی {restoreProgress}</div>
+                </div>
+              )}
             </div>
 
             {/* Info box */}

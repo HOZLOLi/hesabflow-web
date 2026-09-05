@@ -38,6 +38,19 @@ export class WebDatabase {
     }
   }
 
+  /** Save to IndexedDB RIGHT NOW (no debounce). Must be awaited before any
+   *  programmatic window.location.reload() — otherwise the pending debounced
+   *  save dies with the page and freshly imported/changed data is lost. */
+  async flush(): Promise<void> {
+    if (this.saveTimer) {
+      clearTimeout(this.saveTimer);
+      this.saveTimer = null;
+    }
+    const obj: Record<string, Row[]> = {};
+    for (const [t, rows] of this.store) obj[t] = rows;
+    await idbSet(STORAGE_KEY, JSON.stringify(obj));
+  }
+
   private scheduleSave(): void {
     if (this.saveTimer) clearTimeout(this.saveTimer);
     this.saveTimer = setTimeout(() => {

@@ -149,6 +149,10 @@ interface DataState {
     jsonText: string,
     onProgress?: (table: string, done: number, total: number) => void
   ) => Promise<void>;
+  importBackupSqliteDump: (
+    dump: Record<string, unknown>,
+    onProgress?: (table: string, done: number, total: number) => void
+  ) => Promise<void>;
   clearAllData: () => Promise<void>;
 }
 
@@ -3521,6 +3525,13 @@ export const useDataStore = create<DataState>()((set, get) => ({
   importBackupJSON: async (jsonText, onProgress) => {
     await DatabaseService.importFromJSON(jsonText, onProgress);
     const log = createLog('RESTORE', 'بازگردانی', 'بازگردانی از فایل JSON انجام شد');
+    await DatabaseService.addSystemLog(log);
+    await get().loadAllData();
+  },
+
+  importBackupSqliteDump: async (dump, onProgress) => {
+    await DatabaseService.importFromSqliteDump(dump, onProgress);
+    const log = createLog('RESTORE', 'بازگردانی', 'بازگردانی از فایل پشتیبان دسکتاپ (.db) انجام شد');
     await DatabaseService.addSystemLog(log);
     await get().loadAllData();
   },

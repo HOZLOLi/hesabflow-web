@@ -22,7 +22,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({ windowId }) => {
   const {
     settings, updateSettings, getDatabasePath,
     createBackup, restoreBackup,
-    exportBackupJSON, importBackupJSON,
+    exportBackupJSON, importBackupJSON, importBackupSqliteDump,
     clearAllData,
   } = useDataStore();
   const { showToast, confirm } = useUIStore();
@@ -89,6 +89,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({ windowId }) => {
   };
   const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dbFileInputRef = useRef<HTMLInputElement>(null);
 
   // Cleanup pending reloads on unmount
   useEffect(() => () => {
@@ -245,6 +246,10 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({ windowId }) => {
     fileInputRef.current?.click();
   };
 
+  const handleRestoreDbFile = () => {
+    dbFileInputRef.current?.click();
+  };
+
   const onJSONFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = ''; // reset so same file can be re-selected
@@ -262,6 +267,50 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({ windowId }) => {
       cancelText: 'انصراف',
       onConfirm: () => doRestoreJSON(file),
     });
+  };
+
+  const onDbFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    const sizeKB = (file.size / 1024).toFixed(1);
+    confirm({
+      title: 'بازگردانی از فایل دسکتاپ (.db)',
+      message:
+        `فایل: ${file.name}\nحجم: ${sizeKB} KB\n\n` +
+        `تمام اطلاعات فعلی پاک شده و با محتوای پشتیبان دسکتاپ جایگزین خواهد شد.\n\n` +
+        `آیا ادامه می‌دهید؟`,
+      variant: 'danger',
+      confirmText: 'بله، بازگردانی شود',
+      cancelText: 'انصراف',
+      onConfirm: () => doRestoreDbFile(file),
+    });
+  };
+
+  const doRestoreDbFile = async (file: File) => {
+    try {
+      setBusy('restore');
+      setRestoreProgress(null);
+      showToast('warning', 'در حال خواندن فایل پشتیبان...');
+      const { readSqliteDumpFromFile } = await import('../../services/SqliteFileReader');
+      const dump = await readSqliteDumpFromFile(file);
+      await importBackupSqliteDump(dump, (table, done, total) => {
+        const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+        setRestoreProgress(`${pct}%`);
+      });
+      setRestoreProgress('100%');
+      showToast('success', 'پشتیبان دسکتاپ با موفقیت بازگردانی شد. در حال بارگذاری مجدد...');
+      reloadTimerRef.current = setTimeout(() => {
+        WebSession.keepNextReload();
+        window.location.reload();
+      }, 1500);
+    } catch (error) {
+      console.error('DB restore error:', error);
+      showToast('error', error instanceof Error ? error.message : 'خطا در بازگردانی فایل .db');
+      setBusy(null);
+      setRestoreProgress(null);
+    }
   };
 
   const doRestoreJSON = async (file: File) => {
@@ -506,6 +555,19 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({ windowId }) => {
               </div>
             )}
 
+            {/* Web-only: restore a desktop .db file directly (sql.js in-browser) */}
+            {!isTauri && (
+              <button
+                type="button"
+                disabled={busy !== null}
+                onClick={handleRestoreDbFile}
+                className="w-full px-3 py-2.5 bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs font-bold flex items-center justify-center gap-1.5"
+              >
+                <Upload size={14} />
+                بازگردانی فایل دسکتاپ (.db)
+              </button>
+            )}
+
             {/* JSON backup/restore — works in both modes */}
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -532,6 +594,13 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({ windowId }) => {
                 accept=".json,application/json"
                 className="hidden"
                 onChange={onJSONFileSelected}
+              />
+              <input
+                ref={dbFileInputRef}
+                type="file"
+                accept=".db,application/octet-stream"
+                className="hidden"
+                onChange={onDbFileSelected}
               />
               {restoreProgress && (
                 <div className="col-span-2 bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 p-2">

@@ -2148,17 +2148,46 @@ export class DatabaseService {
     if (!parsed || typeof parsed !== 'object' || !parsed._meta) {
       throw new Error('ساختار فایل پشتیبان قابل تشخیص نیست.');
     }
+    await this.insertBackupDump(parsed, onProgress);
+  }
 
+  /**
+   * Restore rows dumped from a desktop SQLite backup file (.db), read in the
+   * browser by services/SqliteFileReader (sql.js). Values arrive exactly as
+   * they were stored on disk — JSON columns already serialized — so the same
+   * normalize+insert pipeline as JSON restore is reused unchanged.
+   */
+  static async importFromSqliteDump(
+    dump: Record<string, unknown>,
+    onProgress?: (table: string, done: number, total: number) => void
+  ): Promise<void> {
+    if (!dump || typeof dump !== 'object') {
+      throw new Error('محتوای فایل پشتیبان قابل خواندن نیست.');
+    }
+    const hasKnownTable = this.BACKUP_TABLES.some(
+      t => Array.isArray((dump as any)[t])
+    );
+    if (!hasKnownTable) {
+      throw new Error('این فایل یک پشتیبان حسابفلو نیست (هیچ جدول شناخته‌شده‌ای ندارد).');
+    }
+    await this.insertBackupDump(dump as any, onProgress);
+  }
+
+  /** Shared pipeline: clear DB → normalize values → insert → flush. */
+  private static async insertBackupDump(
+    parsed: Record<string, any>,
+    onProgress?: (table: string, done: number, total: number) => void
+  ): Promise<void> {
     await this.ensureInitialized();
 
     // Clear existing data (respecting FK order)
     await this.clearAllData();
 
     // JSON columns that the app's row mappers expect as serialized strings
-    // (see addInvoice/addProduction/addTask/...). A backup produced by
-    // WebDatabase mode (or a hand-edited file) can hold raw arrays/objects
-    // here — re-serialize them, otherwise JSON.parse on load crashes and
-    // every invoice/production/repair becomes unreadable after restore.
+    // (see addInvoice/addProduction/addTask/...). Values in a backup can be
+    // EITHER already-serialized strings (Tauri/SQLite dumps) or raw
+    // arrays/objects (WebDatabase-mode exports) — both must land in the DB
+    // as the exact same serialized string the app wrote originally.
     const JSON_COLUMNS: Record<string, string[]> = {
       invoices: ['items', 'linkedCheckIds'],
       productions: ['rawMaterials', 'costs', 'notes', 'photos'],
@@ -2167,6 +2196,28 @@ export class DatabaseService {
       products: ['pricingStrategy', 'images'],
       checks: ['images'],
       system_logs: ['details'],
+    };
+
+    const normalizeValue = (table: string, col: string, v: unknown): unknown => {
+      if (JSON_COLUMNS[table]?.includes(col)) {
+        if (v === undefined || v === null) return null;
+        if (typeof v === 'string') {
+          // CRITICAL: never re-serialize a string — that double-encodes it
+          // ("[{\"id\"..."] → "\"[{\\\"id\\\"...\"") and the app later reads
+          // a broken string instead of an array. Instead verify it parses as
+          // JSON; if not (plain text in a JSON column), wrap it minimally.
+          try {
+            JSON.parse(v);
+            return v; // already valid JSON — preserve byte-for-byte
+          } catch {
+            return JSON.stringify(v); // was plain text — make it valid JSON
+          }
+        }
+        return JSON.stringify(v); // raw object/array from web-mode export
+      }
+      if (v === undefined) return null;
+      if (typeof v === 'boolean') return v ? 1 : 0;
+      return v;
     };
 
     let totalRows = 0;
@@ -2188,15 +2239,7 @@ export class DatabaseService {
         if (!row || typeof row !== 'object') continue;
         const cols = Object.keys(row);
         if (cols.length === 0) continue;
-        const values = cols.map(c => {
-          const v = row[c];
-          if (jsonCols.includes(c)) {
-            return v === undefined || v === null ? null : JSON.stringify(v);
-          }
-          if (v === undefined) return null;
-          if (typeof v === 'boolean') return v ? 1 : 0;
-          return v;
-        });
+        const values = cols.map(c => normalizeValue(table, c, row[c]));
         const placeholders = cols.map((_, i) => `$${i + 1}`).join(', ');
         batch.push({
           sql: `INSERT INTO ${table} (${cols.join(', ')}) VALUES (${placeholders})`,
@@ -2235,7 +2278,7 @@ export class DatabaseService {
       await (this.db as any).flush();
     }
 
-    console.log('✅ JSON backup restored');
+    console.log('✅ Backup dump restored');
   }
 
   // ==================== CLOUD / WEB AUTH (web mode only) ====================
